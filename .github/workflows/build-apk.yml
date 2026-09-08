@@ -1,0 +1,69 @@
+name: Build Tasbih APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Download repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '7.6.4'
+
+      - name: Extract project
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP="tasbih_mohammad_android_project_fixed.zip"
+          if [ ! -f "$ZIP" ]; then
+            echo "Project ZIP not found:"
+            ls -la
+            exit 1
+          fi
+          mkdir -p extracted
+          unzip -q "$ZIP" -d extracted
+          SETTINGS="$(find extracted -type f -name settings.gradle -print -quit)"
+          if [ -z "$SETTINGS" ]; then
+            echo "settings.gradle not found inside ZIP"
+            exit 1
+          fi
+          PROJECT_DIR="$(dirname "$SETTINGS")"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+          rm -f "$PROJECT_DIR/local.properties"
+
+      - name: Build debug APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+          gradle --no-daemon --stacktrace assembleDebug
+
+      - name: Save APK
+        uses - name: Save APK
+        uses: actions/upload-artifact@v4
+       -Mohammad-APK
+          path: extracted/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
+          
