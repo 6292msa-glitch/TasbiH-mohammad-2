@@ -2,7 +2,8 @@ name: Build Tasbih APK
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -35,22 +36,32 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+
           ZIP="tasbih_mohammad_android_project_fixed.zip"
+
           if [ ! -f "$ZIP" ]; then
-            echo "Project ZIP not found:"
+            echo "ERROR: Project ZIP was not found."
             ls -la
             exit 1
           fi
+
           mkdir -p extracted
           unzip -q "$ZIP" -d extracted
-          SETTINGS="$(find extracted -type f -name settings.gradle -print -quit)"
+
+          SETTINGS="$(find extracted -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)"
+
           if [ -z "$SETTINGS" ]; then
-            echo "settings.gradle not found inside ZIP"
+            echo "ERROR: Gradle settings file was not found inside ZIP."
+            find extracted -maxdepth 4 -type f
             exit 1
           fi
+
           PROJECT_DIR="$(dirname "$SETTINGS")"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
           rm -f "$PROJECT_DIR/local.properties"
+
+          echo "Project directory: $PROJECT_DIR"
 
       - name: Build debug APK
         shell: bash
@@ -60,9 +71,9 @@ jobs:
           gradle --no-daemon --stacktrace assembleDebug
 
       - name: Save APK
-        uses - name: Save APK
         uses: actions/upload-artifact@v4
-       -Mohammad-APK
+        with:
+          name: Tasbih-Mohammad-APK
           path: extracted/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 7
